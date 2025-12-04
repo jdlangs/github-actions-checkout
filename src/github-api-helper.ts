@@ -18,19 +18,20 @@ export async function downloadRepository(
   ref: string,
   commit: string,
   repositoryPath: string,
-  baseUrl?: string
+  baseUrl?: string,
+  retries: number = 3
 ): Promise<void> {
   // Determine the default branch
   if (!ref && !commit) {
     core.info('Determining the default branch')
-    ref = await getDefaultBranch(authToken, owner, repo, baseUrl)
+    ref = await getDefaultBranch(authToken, owner, repo, baseUrl, retries)
   }
 
   // Download the archive
   let archiveData = await retryHelper.execute(async () => {
     core.info('Downloading the archive')
     return await downloadArchive(authToken, owner, repo, ref, commit, baseUrl)
-  })
+  }, retries)
 
   // Write archive to disk
   core.info('Writing archive to disk')
@@ -83,7 +84,8 @@ export async function getDefaultBranch(
   authToken: string,
   owner: string,
   repo: string,
-  baseUrl?: string
+  baseUrl?: string,
+  retries: number = 3
 ): Promise<string> {
   return await retryHelper.execute(async () => {
     core.info('Retrieving the default branch name')
@@ -119,7 +121,7 @@ export async function getDefaultBranch(
     }
 
     return result
-  })
+  }, retries)
 }
 
 async function downloadArchive(

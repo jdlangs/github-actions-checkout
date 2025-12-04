@@ -161,5 +161,12 @@ export async function getInputs(): Promise<IGitSourceSettings> {
   result.githubServerUrl = core.getInput('github-server-url')
   core.debug(`GitHub Host URL = ${result.githubServerUrl}`)
 
+  // Retries
+  result.retries = Math.floor(Number(core.getInput('retries') || '3'))
+  if (isNaN(result.retries) || result.retries < 1) {
+    result.retries = 3
+  }
+  core.debug(`retries = ${result.retries}`)
+
   return result
 }

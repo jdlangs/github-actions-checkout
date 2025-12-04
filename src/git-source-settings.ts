@@ -118,4 +118,9 @@ export interface IGitSourceSettings {
    * User override on the GitHub Server/Host URL that hosts the repository to be cloned
    */
   githubServerUrl: string | undefined
+
+  /**
+   * Number of retry attempts for transient errors
+   */
+  retries: number
 }

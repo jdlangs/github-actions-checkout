@@ -97,7 +97,8 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
         settings.ref,
         settings.commit,
         settings.repositoryPath,
-        settings.githubServerUrl
+        settings.githubServerUrl,
+        settings.retries
       )
       return
     }
@@ -143,7 +144,8 @@ export async function getSource(settings: IGitSourceSettings): Promise<void> {
           settings.authToken,
           settings.repositoryOwner,
           settings.repositoryName,
-          settings.githubServerUrl
+          settings.githubServerUrl,
+          settings.retries
         )
       }
       core.endGroup()
@@ -339,7 +341,8 @@ async function getGitCommandManager(
     return await gitCommandManager.createCommandManager(
       settings.repositoryPath,
       settings.lfs,
-      settings.sparseCheckout != null
+      settings.sparseCheckout != null,
+      settings.retries
     )
   } catch (err) {
     // Git is required for LFS

@@ -85,12 +85,14 @@ export interface IGitCommandManager {
 export async function createCommandManager(
   workingDirectory: string,
   lfs: boolean,
-  doSparseCheckout: boolean
+  doSparseCheckout: boolean,
+  retries: number = 3
 ): Promise<IGitCommandManager> {
   return await GitCommandManager.createCommandManager(
     workingDirectory,
     lfs,
-    doSparseCheckout
+    doSparseCheckout,
+    retries
   )
 }
 
@@ -104,6 +106,7 @@ class GitCommandManager {
   private doSparseCheckout = false
   private workingDirectory = ''
   private gitVersion: GitVersion = new GitVersion()
+  private retries: number = 3
 
   // Private constructor; use createCommandManager()
   private constructor() {}
@@ -309,7 +312,7 @@ class GitCommandManager {
     const that = this
     await retryHelper.execute(async () => {
       await that.execGit(args)
-    })
+    }, this.retries)
   }
 
   async getDefaultBranch(repositoryUrl: string): Promise<string> {
@@ -323,7 +326,7 @@ class GitCommandManager {
         repositoryUrl,
         'HEAD'
       ])
-    })
+    }, this.retries)
 
     if (output) {
       // Satisfy compiler, will always be set
@@ -378,7 +381,7 @@ class GitCommandManager {
     const that = this
     await retryHelper.execute(async () => {
       await that.execGit(args)
-    })
+    }, this.retries)
   }
 
   async lfsInstall(): Promise<void> {
@@ -593,13 +596,15 @@ class GitCommandManager {
   static async createCommandManager(
     workingDirectory: string,
     lfs: boolean,
-    doSparseCheckout: boolean
+    doSparseCheckout: boolean,
+    retries: number = 3
   ): Promise<GitCommandManager> {
     const result = new GitCommandManager()
     await result.initializeCommandManager(
       workingDirectory,
       lfs,
-      doSparseCheckout
+      doSparseCheckout,
+      retries
     )
     return result
   }
@@ -651,9 +656,11 @@ class GitCommandManager {
   private async initializeCommandManager(
     workingDirectory: string,
     lfs: boolean,
-    doSparseCheckout: boolean
+    doSparseCheckout: boolean,
+    retries: number = 3
   ): Promise<void> {
     this.workingDirectory = workingDirectory
+    this.retries = retries
 
     // Git-lfs will try to pull down assets if any of the local/user/system setting exist.
     // If the user didn't enable `LFS` in their pipeline definition, disable LFS fetch/checkout.

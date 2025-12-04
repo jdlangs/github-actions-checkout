@@ -575,9 +575,9 @@ const git_version_1 = __nccwpck_require__(3142);
 // sparse-checkout not [well-]supported before 2.28 (see https://github.com/actions/checkout/issues/1386)
 exports.MinimumGitVersion = new git_version_1.GitVersion('2.18');
 exports.MinimumGitSparseCheckoutVersion = new git_version_1.GitVersion('2.28');
-function createCommandManager(workingDirectory, lfs, doSparseCheckout) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return yield GitCommandManager.createCommandManager(workingDirectory, lfs, doSparseCheckout);
+function createCommandManager(workingDirectory_1, lfs_1, doSparseCheckout_1) {
+    return __awaiter(this, arguments, void 0, function* (workingDirectory, lfs, doSparseCheckout, retries = 3) {
+        return yield GitCommandManager.createCommandManager(workingDirectory, lfs, doSparseCheckout, retries);
     });
 }
 class GitCommandManager {
@@ -592,6 +592,7 @@ class GitCommandManager {
         this.doSparseCheckout = false;
         this.workingDirectory = '';
         this.gitVersion = new git_version_1.GitVersion();
+        this.retries = 3;
     }
     branchDelete(remote, branch) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -761,7 +762,7 @@ class GitCommandManager {
             const that = this;
             yield retryHelper.execute(() => __awaiter(this, void 0, void 0, function* () {
                 yield that.execGit(args);
-            }));
+            }), this.retries);
         });
     }
     getDefaultBranch(repositoryUrl) {
@@ -776,7 +777,7 @@ class GitCommandManager {
                     repositoryUrl,
                     'HEAD'
                 ]);
-            }));
+            }), this.retries);
             if (output) {
                 // Satisfy compiler, will always be set
                 for (let line of output.stdout.trim().split('\n')) {
@@ -822,7 +823,7 @@ class GitCommandManager {
             const that = this;
             yield retryHelper.execute(() => __awaiter(this, void 0, void 0, function* () {
                 yield that.execGit(args);
-            }));
+            }), this.retries);
         });
     }
     lfsInstall() {
@@ -1015,10 +1016,10 @@ class GitCommandManager {
             return this.gitVersion;
         });
     }
-    static createCommandManager(workingDirectory, lfs, doSparseCheckout) {
-        return __awaiter(this, void 0, void 0, function* () {
+    static createCommandManager(workingDirectory_1, lfs_1, doSparseCheckout_1) {
+        return __awaiter(this, arguments, void 0, function* (workingDirectory, lfs, doSparseCheckout, retries = 3) {
             const result = new GitCommandManager();
-            yield result.initializeCommandManager(workingDirectory, lfs, doSparseCheckout);
+            yield result.initializeCommandManager(workingDirectory, lfs, doSparseCheckout, retries);
             return result;
         });
     }
@@ -1054,9 +1055,10 @@ class GitCommandManager {
             return result;
         });
     }
-    initializeCommandManager(workingDirectory, lfs, doSparseCheckout) {
-        return __awaiter(this, void 0, void 0, function* () {
+    initializeCommandManager(workingDirectory_1, lfs_1, doSparseCheckout_1) {
+        return __awaiter(this, arguments, void 0, function* (workingDirectory, lfs, doSparseCheckout, retries = 3) {
             this.workingDirectory = workingDirectory;
+            this.retries = retries;
             // Git-lfs will try to pull down assets if any of the local/user/system setting exist.
             // If the user didn't enable `LFS` in their pipeline definition, disable LFS fetch/checkout.
             this.lfs = lfs;
@@ -1377,7 +1379,7 @@ function getSource(settings) {
                 else if (settings.sshKey) {
                     throw new Error(`Input 'ssh-key' not supported when falling back to download using the GitHub REST API. To create a local Git repository instead, add Git ${gitCommandManager.MinimumGitVersion} or higher to the PATH.`);
                 }
-                yield githubApiHelper.downloadRepository(settings.authToken, settings.repositoryOwner, settings.repositoryName, settings.ref, settings.commit, settings.repositoryPath, settings.githubServerUrl);
+                yield githubApiHelper.downloadRepository(settings.authToken, settings.repositoryOwner, settings.repositoryName, settings.ref, settings.commit, settings.repositoryPath, settings.githubServerUrl, settings.retries);
                 return;
             }
             // Save state for POST action
@@ -1410,7 +1412,7 @@ function getSource(settings) {
                     settings.ref = yield git.getDefaultBranch(repositoryUrl);
                 }
                 else {
-                    settings.ref = yield githubApiHelper.getDefaultBranch(settings.authToken, settings.repositoryOwner, settings.repositoryName, settings.githubServerUrl);
+                    settings.ref = yield githubApiHelper.getDefaultBranch(settings.authToken, settings.repositoryOwner, settings.repositoryName, settings.githubServerUrl, settings.retries);
                 }
                 core.endGroup();
             }
@@ -1559,7 +1561,7 @@ function getGitCommandManager(settings) {
     return __awaiter(this, void 0, void 0, function* () {
         core.info(`Working directory is '${settings.repositoryPath}'`);
         try {
-            return yield gitCommandManager.createCommandManager(settings.repositoryPath, settings.lfs, settings.sparseCheckout != null);
+            return yield gitCommandManager.createCommandManager(settings.repositoryPath, settings.lfs, settings.sparseCheckout != null, settings.retries);
         }
         catch (err) {
             // Git is required for LFS
@@ -1706,18 +1708,18 @@ const toolCache = __importStar(__nccwpck_require__(7784));
 const uuid_1 = __nccwpck_require__(5840);
 const url_helper_1 = __nccwpck_require__(9437);
 const IS_WINDOWS = process.platform === 'win32';
-function downloadRepository(authToken, owner, repo, ref, commit, repositoryPath, baseUrl) {
-    return __awaiter(this, void 0, void 0, function* () {
+function downloadRepository(authToken_1, owner_1, repo_1, ref_1, commit_1, repositoryPath_1, baseUrl_1) {
+    return __awaiter(this, arguments, void 0, function* (authToken, owner, repo, ref, commit, repositoryPath, baseUrl, retries = 3) {
         // Determine the default branch
         if (!ref && !commit) {
             core.info('Determining the default branch');
-            ref = yield getDefaultBranch(authToken, owner, repo, baseUrl);
+            ref = yield getDefaultBranch(authToken, owner, repo, baseUrl, retries);
         }
         // Download the archive
         let archiveData = yield retryHelper.execute(() => __awaiter(this, void 0, void 0, function* () {
             core.info('Downloading the archive');
             return yield downloadArchive(authToken, owner, repo, ref, commit, baseUrl);
-        }));
+        }), retries);
         // Write archive to disk
         core.info('Writing archive to disk');
         const uniqueId = (0, uuid_1.v4)();
@@ -1761,8 +1763,8 @@ function downloadRepository(authToken, owner, repo, ref, commit, repositoryPath,
 /**
  * Looks up the default branch name
  */
-function getDefaultBranch(authToken, owner, repo, baseUrl) {
-    return __awaiter(this, void 0, void 0, function* () {
+function getDefaultBranch(authToken_1, owner_1, repo_1, baseUrl_1) {
+    return __awaiter(this, arguments, void 0, function* (authToken, owner, repo, baseUrl, retries = 3) {
         return yield retryHelper.execute(() => __awaiter(this, void 0, void 0, function* () {
             core.info('Retrieving the default branch name');
             const octokit = github.getOctokit(authToken, {
@@ -1793,7 +1795,7 @@ function getDefaultBranch(authToken, owner, repo, baseUrl) {
                 result = `refs/heads/${result}`;
             }
             return result;
-        }));
+        }), retries);
     });
 }
 function downloadArchive(authToken, owner, repo, ref, commit, baseUrl) {
@@ -1980,6 +1982,12 @@ function getInputs() {
         // Determine the GitHub URL that the repository is being hosted from
         result.githubServerUrl = core.getInput('github-server-url');
         core.debug(`GitHub Host URL = ${result.githubServerUrl}`);
+        // Retries
+        result.retries = Math.floor(Number(core.getInput('retries') || '3'));
+        if (isNaN(result.retries) || result.retries < 1) {
+            result.retries = 3;
+        }
+        core.debug(`retries = ${result.retries}`);
         return result;
     });
 }
@@ -2456,9 +2464,9 @@ class RetryHelper {
     }
 }
 exports.RetryHelper = RetryHelper;
-function execute(action) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const retryHelper = new RetryHelper();
+function execute(action_1) {
+    return __awaiter(this, arguments, void 0, function* (action, maxAttempts = defaultMaxAttempts) {
+        const retryHelper = new RetryHelper(maxAttempts);
         return yield retryHelper.execute(action);
     });
 }
