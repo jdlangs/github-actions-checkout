@@ -163,7 +163,7 @@ export async function getInputs(): Promise<IGitSourceSettings> {
 
   // Retries
   result.retries = Math.floor(Number(core.getInput('retries') || '3'))
-  if (isNaN(result.retries) || result.retries < 1) {
+  if (isNaN(result.retries) || result.retries < 0) {
     result.retries = 3
   }
   core.debug(`retries = ${result.retries}`)
